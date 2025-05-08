@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">TeleWeather</string>
+
+    <!-- Títulos de fragmentos -->
+    <string name="title_location">Localidad</string>
+    <string name="title_pronostico">Pronóstico</string>
+    <string name="title_deportes">Deportes</string>
+
+    <!-- Textos de LocationFragment -->
+    <string name="hint_search_location">Ingrese nombre de localidad</string>
+    <string name="btn_search">Buscar</string>
+    <string name="no_results">No se encontraron resultados</string>
+
+    <!-- Textos de PronosticoFragment -->
+    <string name="hint_location_id">ID de la localidad</string>
+    <string name="hint_days">Número de días (max. 14)</string>
+    <string name="btn_search_forecast">Buscar</string>
+    <string name="forecast_not_found">Realice Busqueda No se encontró pronóstico</string>
+
+    <!-- Textos de DeportesFragment -->
+    <string name="hint_city_region">Ingrese ciudad o región</string>
+    <string name="btn_search_sports">Buscar</string>
+    <string name="no_partidos_found">Realice Busqueda No se encontraron partidos</string>
+    <string name="error_empty_location">Error</string>
+
+</resources>
