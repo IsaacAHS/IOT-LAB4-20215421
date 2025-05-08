@@ -162,4 +162,13 @@ public class PronosticoViewModel extends ViewModel {
             e.printStackTrace();
         }
     }
+
+    /**
+     * Limpia la lista de pronósticos
+     */
+    public void clearPronosticos() {
+        pronosticoList.setValue(new ArrayList<>());
+        cityName.setValue(null);
+        error.setValue(null);
+    }
 }

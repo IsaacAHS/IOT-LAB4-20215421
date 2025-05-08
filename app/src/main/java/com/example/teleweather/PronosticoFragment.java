@@ -1,5 +1,11 @@
 package com.example.teleweather;
 
+import android.content.Context;
+import android.content.Intent;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -12,6 +18,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -21,7 +28,7 @@ import com.example.teleweather.R;
 import com.example.teleweather.PronosticoAdapter;
 import com.example.teleweather.PronosticoViewModel;
 
-public class PronosticoFragment extends Fragment {
+public class PronosticoFragment extends Fragment implements SensorEventListener {
 
     private PronosticoViewModel viewModel;
     private RecyclerView recyclerView;
@@ -32,6 +39,14 @@ public class PronosticoFragment extends Fragment {
     private EditText etLocationId;
     private EditText etDays;
     private View searchLayout;
+
+    // Sensor de agitación
+    private SensorManager sensorManager;
+    private Sensor accelerometer;
+    private static final float SHAKE_THRESHOLD = 20.0f; // Umbral de aceleración para detectar agitación
+    private long lastUpdate = 0;
+    private float lastX, lastY, lastZ;
+    private static final int MIN_TIME_BETWEEN_SHAKES = 1000; // Milisegundos mínimos entre agitaciones
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -55,8 +70,11 @@ public class PronosticoFragment extends Fragment {
         searchLayout = view.findViewById(R.id.layoutInputs);
         tvCityName = view.findViewById(R.id.textViewCityName);
 
-
-
+        // Inicializar el sensor manager y el acelerómetro
+        sensorManager = (SensorManager) requireActivity().getSystemService(Context.SENSOR_SERVICE);
+        if (sensorManager != null) {
+            accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        }
 
         // Configurar RecyclerView
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
@@ -126,6 +144,103 @@ public class PronosticoFragment extends Fragment {
             // Mostrar formulario de búsqueda
             searchLayout.setVisibility(View.VISIBLE);
         }
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        // Registrar el listener del sensor cuando el fragmento está en primer plano
+        if (sensorManager != null && accelerometer != null) {
+            sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+        }
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        // Desregistrar el listener del sensor cuando el fragmento no está en primer plano
+        if (sensorManager != null) {
+            sensorManager.unregisterListener(this);
+        }
+    }
+
+    @Override
+    public void onSensorChanged(SensorEvent event) {
+        if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+            long currentTime = System.currentTimeMillis();
+
+            // Sólo procesar si ha pasado suficiente tiempo desde la última actualización
+            if ((currentTime - lastUpdate) > MIN_TIME_BETWEEN_SHAKES) {
+                long diffTime = currentTime - lastUpdate;
+                lastUpdate = currentTime;
+
+                float x = event.values[0];
+                float y = event.values[1];
+                float z = event.values[2];
+
+                // Cálcular el cambio de aceleración
+                float speed = Math.abs(x + y + z - lastX - lastY - lastZ) / diffTime * 10000;
+
+                // Si la aceleración supera el umbral, detectamos una agitación
+                if (speed > SHAKE_THRESHOLD) {
+                    onShakeDetected();
+                }
+
+                lastX = x;
+                lastY = y;
+                lastZ = z;
+            }
+        }
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+        // No necesitamos implementar esto para el detector de agitación
+    }
+
+    /**
+     * Método llamado cuando se detecta una agitación del dispositivo
+     */
+    private void onShakeDetected() {
+        // Verificar si hay pronósticos para eliminar
+        if (viewModel.getPronosticoList().getValue() != null &&
+                !viewModel.getPronosticoList().getValue().isEmpty()) {
+
+            // Mostrar diálogo de confirmación
+            showConfirmationDialog();
+        }
+    }
+
+    /**
+     * Muestra un diálogo de confirmación para limpiar los pronósticos
+     */
+    private void showConfirmationDialog() {
+        if (isAdded() && getContext() != null) {
+            new AlertDialog.Builder(requireContext())
+                    .setTitle("Limpiar pronósticos")
+                    .setMessage("¿Desea eliminar los pronósticos mostrados?")
+                    .setPositiveButton("Sí", (dialog, which) -> {
+                        // Limpiar los pronósticos
+                        viewModel.clearPronosticos();
+                        Toast.makeText(requireContext(), "Pronósticos eliminados", Toast.LENGTH_SHORT).show();
+
+                        // Navegar a la AppActivity
+                        navigateToAppActivity();
+                    })
+                    .setNegativeButton("No", null)
+                    .show();
+        }
+    }
+
+    /**
+     * Navega a la AppActivity
+     */
+    private void navigateToAppActivity() {
+        // Crear Intent para abrir AppActivity
+        Intent intent = new Intent(requireContext(), AppActivity.class);
+        // Limpiar la pila de actividades para que AppActivity sea la única actividad
+        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent);
     }
 
     private void updateEmptyView(boolean isEmpty) {
